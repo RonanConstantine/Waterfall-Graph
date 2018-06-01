@@ -1,3 +1,4 @@
+import DataViewObjects = powerbi.extensibility.utils.dataview.DataViewObjects;
 module powerbi.extensibility.visual {
 
     //interface holds each data entry characteristic
@@ -40,6 +41,20 @@ module powerbi.extensibility.visual {
             },
             border: {
                 top: 10
+            },
+            line:
+            {
+                hidden:{
+                    default: false,
+                    value: false
+                    
+                },
+                amount:
+                {
+                    default:null,
+                    value:0
+                }
+                
             }
         }
 
@@ -47,7 +62,7 @@ module powerbi.extensibility.visual {
             this.host = options.host;
             this.svg = d3.select(options.element)
                 .append("svg")
-                .classed("my-little-bar-chart", true);
+                .classed("Water_Fall", true);
             this.barGroup = this.svg.append("g")
                 .classed("bar-group", true);
             
@@ -64,27 +79,38 @@ module powerbi.extensibility.visual {
             this.selectionManager = this.host.createSelectionManager();
         }
 
+        //updates the graph every time its needed
         public update(options: VisualUpdateOptions) {
 
+            this.updateSettings(options);
             
+            let lineShow = this.settings.line.hidden.value ? true : false
+            let lineAmount = this.settings.line.amount.value;
             //pull data
             let viewModel = this.getViewModel(options);
 
-            //Getting the maximum possible value that can be made
+            viewModel =FixValues(viewModel);
+
+                
+
+
+            //Getting the maximum value that can be made
             ////////////////////////
             var maxVal: number = 0;
             var sum = 0;
+            var _Highest: number = 0
             for(let i =0; i < viewModel.dataPoints.length;i++)
             {
                 var _tempVal: number = viewModel.dataPoints[i].value;
                 
-                if(_tempVal>0)
+                if(_Highest <_tempVal)
                 {
-                    sum =sum + _tempVal
-                    console.log("sum: "+ sum);
+                    _Highest= _tempVal
+                    
                 }
-                maxVal = sum;
+                
             }
+            maxVal = _Highest;
             ///////////////////
             
             //Getting the minimum possible value that can be made
@@ -92,9 +118,10 @@ module powerbi.extensibility.visual {
             var minVal: number = 0;
             var sum = 0;
             var Lowest = 0;
-            for(let i =0; i < viewModel.dataPoints.length-1;i++)
+            for(let i =0; i < viewModel.dataPoints.length;i++)
             {
                 var _tempVal: number = viewModel.dataPoints[i].value;
+                console.log("_tempVal" + _tempVal);
                 
                 sum += _tempVal;
                 if(sum<Lowest)
@@ -104,8 +131,9 @@ module powerbi.extensibility.visual {
                 
                 minVal = Lowest;
             }
-            
+            console.log("kcdejkf" + minVal);
             //////////////////
+            
             
             //Getting viewport settings so the graph will scale nicely
             let width = options.viewport.width;
@@ -173,9 +201,17 @@ module powerbi.extensibility.visual {
                     "text-anchor": "end",
                     "font-size": "x-small"
                 });
+
+               
+
+
                 
-            //define bar group and embed data into it
-            //This allows you to use the d notation
+            
+            
+                //define bar group and embed data into it
+            
+            
+                //This allows you to use the d notation
             let bars = this.barGroup
                 .selectAll(".bar")
                 .data(viewModel.dataPoints);
@@ -188,6 +224,7 @@ module powerbi.extensibility.visual {
 
             //Running total keeps track of the current running total in the waterfall
             var runningTotal: number = 0;
+            
             //Style bars(width,height,y,x)
             bars
                 .attr({
@@ -235,9 +272,10 @@ cartesian co-ords           -    converted to screen =      -    therefore heigh
                             if(d.category != "Total")
                             {
                             var _plotPoint = runningTotal+d.value;
-                            runningTotal = runningTotal+d.value;
-                            
-                            return yScale(_plotPoint) 
+                            //Change this line to the commented one if you want to revert to the previous waterfall type
+                           // runningTotal = runningTotal+d.value;
+                           runningTotal = d.value;
+                            return yScale(d.value) 
                             }
                             //Special consideration for the total bar
                             //Make sure it always starts at 0
@@ -287,12 +325,70 @@ cartesian co-ords           -    converted to screen =      -    therefore heigh
                         });
                 });
             
-            console.log("1ish");
+            
             bars.exit()
                 .remove();
-                console.log("2ish");
+
+                if(lineShow == true)
+                {
+                    let lines = this.lineGroup
+                    .selectAll(".aLine")
+                    .data(viewModel.dataPoints);
+        
+                    lines.enter()
+                        .append("line")
+                        .classed("aLine", true);
+                    
+                    lines
+                    .attr({
+                        x1: 0 + this.settings.axis.y.padding,
+                        x2: width,
+                        y1: yScale(lineAmount),
+                        y2: yScale(lineAmount),
+                        stroke:"black",
+                        "stroke-width":1
+                    });
+                }
+                else{
+                    let lines = this.lineGroup
+                    .selectAll(".aLine")
+                    .data(viewModel.dataPoints);
+        
+                    lines.enter()
+                        .append("line")
+                        .classed("aLine", true);
+                    
+                    lines
+                    .attr({
+                        x1: 0,
+                        x2: 0,
+                        y1: 0,
+                        y2: 0,
+                        stroke:"black",
+                        "stroke-width":0
+                    });
+                }
+           
+                
+         
             
-            
+        }
+        
+        private updateSettings(options:VisualUpdateOptions)
+        {
+            this.settings.line.hidden.value = DataViewObjects.getValue(
+                options.dataViews[0].metadata.objects,{
+                    objectName: "lines",
+                    propertyName: "show"
+                },
+            this.settings.line.hidden.default);
+
+            this.settings.line.amount.value = DataViewObjects.getValue(
+                options.dataViews[0].metadata.objects,{
+                    objectName: "lines",
+                    propertyName: "value"
+                },
+                this.settings.line.amount.default);
         }
 
         private getViewModel(options: VisualUpdateOptions): ViewModel {
@@ -319,10 +415,10 @@ cartesian co-ords           -    converted to screen =      -    therefore heigh
             let categories = view.categories[0];
             let values = view.values[0];
             let highlights = values.highlights;
-           
+            
             //pushes datapoints to the viewmodel
             for (let i = 0, len = Math.max(categories.values.length, values.values.length); i < len+1; i++) {
-                console.log(i)
+                
                 if(i<len)
                 {
                     viewModel.dataPoints.push({
@@ -335,6 +431,7 @@ cartesian co-ords           -    converted to screen =      -    therefore heigh
                             .createSelectionId(),
                         highlighted: highlights ? highlights[i] ? true : false : false
                     });
+                    
                 }
                 //Special consideration for total bar
                 //will need to be done better when doing sub totals
@@ -377,6 +474,26 @@ cartesian co-ords           -    converted to screen =      -    therefore heigh
             return viewModel;
         }
 
+        public enumerateObjectInstances(options: EnumerateVisualObjectInstancesOptions):
+        VisualObjectInstanceEnumeration{
+            let propertyGroupName = options.objectName;
+            let properties: VisualObjectInstance[] = [];
+
+            switch (propertyGroupName)
+            {
+                case "lines":
+                properties.push({
+                    objectName: propertyGroupName,
+                    properties: {
+                        show: this.settings.line.hidden.value,
+                        value: this.settings.line.amount.value
+                    },
+                    selector: null
+                });
+                break;
+            };
+            return properties;
+        }
        
     }
 
@@ -385,11 +502,96 @@ cartesian co-ords           -    converted to screen =      -    therefore heigh
     {
         if(value>0)
         {
-            return "#00FF00"
+            return "#00345E"
         }
         else{
             return "#FF0800"
         }
+    }
+
+    //makes the values on the xscale go up numerically as opposed to being based on he values valuex
+    function FixValues(viewModel:ViewModel)
+    {
+        //Changing the order of the data so as to follow numerical order.
+                //avoiding total for now
+                var newDParray: DataPoint[] = new Array(0);
+                //Fill array with empty data points
+                for (let i = 0;i <viewModel.dataPoints.length-1;i++)
+                {
+                    newDParray[i] = {
+                        category:"Test",
+                        value: null,
+                        colour:"#000000",
+                        identity: null,
+                        highlighted:false
+                    }
+                    
+                }
+               
+                var nameArray:string[]= new Array(0);
+                //Get no. from name
+                for (let i = 0;i <viewModel.dataPoints.length;i++)
+                {
+                    var name: string = viewModel.dataPoints[i].category;
+                    var _tempname = name.split(" ");
+                    var indexString:string = _tempname[0];
+                    if(indexString[0] == "0")
+                    {
+                        indexString= indexString[1];
+                    }
+                   var length = nameArray.push(indexString);
+                   
+                }
+
+                //turn string array into num array
+                var nameArrayNum:number[]= new Array(0);
+                for (let i = 0;i <nameArray.length;i++)
+                {
+                    var length = nameArrayNum.push(+nameArray[i]);
+                }
+               
+                ///Find max value from array
+                var _maxValueinNameArray = null
+                for(let i = 0; i <nameArrayNum.length;i++)
+                {
+                    if(_maxValueinNameArray == null)
+                    {
+                        _maxValueinNameArray = nameArrayNum[i]
+                    }
+                    else if(_maxValueinNameArray<nameArrayNum[i])
+                    {
+                        _maxValueinNameArray = nameArrayNum[i]
+                    }
+                }
+                
+                
+                //create datapoint array by pulling out info in the correct orde
+                for (let i = 1;i <=_maxValueinNameArray;i++)
+                {
+
+                    for (let x = 0;x <nameArrayNum.length;x++)
+                    {
+                        if(nameArrayNum[x] == i)
+                        {
+                            newDParray[i] =viewModel.dataPoints[x];
+                        }
+                    }
+                    
+                }
+
+                //Remove empty Arrays spaces 
+                var _DPArray: DataPoint[] = new Array(0);
+                for (let i = 1;i <newDParray.length;i++)
+                {
+                    if(newDParray[i].category != "Test" && newDParray[i].value != null)
+                    {
+                        _DPArray.push(newDParray[i]);
+                    }
+                }
+
+                //"Re-upload data set to viewModel"
+                viewModel.dataPoints = _DPArray;
+                return viewModel
     }
     
     

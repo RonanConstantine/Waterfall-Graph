@@ -1,5 +1,27 @@
 {
     "supportsHighlight": true,
+    "objects": {
+        "lines": {
+            "displayName": "Constant Line",
+            "properties": {
+                "show": {
+                    "displayName": "Hide Line",
+                    "type": {
+                        "bool": true
+                    }
+                },
+                "value":
+                {
+                    "displayName": "Line value",
+                    "type": {
+                        "text": true                 
+                    }
+
+                }
+               
+            }
+        }
+    },
     "dataRoles": [
         {
             "displayName": "Axis",
