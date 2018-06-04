@@ -1,8 +1,8 @@
 {
   "visual": {
-    "name": "myLittleBarChart",
-    "displayName": "My Little Bar Chart",
-    "guid": "myLittleBarChartC2075CFB318240BC886AFAE5852EBCEB",
+    "name": "WaterFall_Am2Systems",
+    "displayName": "WaterFall Am2Systems",
+    "guid": "WaterFall_Am2SystemsC2075CFB318240BC886AFAE5852EBCEB",
     "visualClassName": "Visual",
     "version": "1.0.0",
     "description": "",
